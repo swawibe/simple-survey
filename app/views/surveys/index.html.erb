@@ -1,0 +1,49 @@
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-6 text-center text-md-start">
+      <h1 class="mb-3">Surveys</h1>
+      <a href="<%= new_survey_path %>" class="btn btn-primary mb-3">New Survey</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped text-center align-middle">
+      <thead>
+      <tr>
+        <th class="text-start">Survey Question</th>
+        <th>Yes %</th>
+        <th>No %</th>
+        <th>Total Responses</th>
+        <th>Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      <% @surveys.each do |survey| %>
+        <tr>
+          <td class="text-start">
+            <a class="text-decoration-none" href="<%= survey_path(survey) %>"><%= survey.question %></a>
+          </td>
+          <td><span class="badge bg-success py-2"><%= survey.yes_percentage %>%</span></td>
+          <td><span class="badge bg-danger py-2"><%= survey.no_percentage %>%</span></td>
+          <td><span class="badge bg-info px-3 py-2"><%= survey.total_responses %></span></td>
+          <td>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+              <a href="<%= survey_path(survey, page: params[:page]) %>" class="btn btn-info btn-sm">View</a>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @surveys.total_pages > 1 %>
+    <div class="mt-4 d-flex justify-content-center">
+      <div class="pagination-container p-3 border rounded d-flex gap-2">
+        <%= will_paginate @surveys, previous_label: 'Previous', next_label: 'Next',
+                          class: 'pagination justify-content-center', inner_window: 2,
+                          outer_window: 1, link_separator: '<span class="mx-2">|</span>' %>
+      </div>
+    </div>
+  <% end %>
+</div>

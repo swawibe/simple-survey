@@ -11,52 +11,61 @@ WORKDIR /rails
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
-    BUNDLE_WITHOUT="development"
+    BUNDLE_WITHOUT="development test" \
+    NODE_ENV="production" \
+    SECRET_KEY_BASE_DUMMY="1"
 
-
-# Throw-away build stage to reduce size of final image
-FROM base as build
-
-# Install packages needed to build gems
+# Install essential dependencies
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libvips pkg-config
-
-# Install application gems
-COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
-    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
-
-# Copy application code
-COPY . .
-
-# Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile app/ lib/
-
-# Precompiling assets for production without requiring secret RAILS_MASTER_KEY
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
-
-
-# Final stage for app image
-FROM base
-
-# Install packages needed for deployment
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libsqlite3-0 libvips && \
+    apt-get install --no-install-recommends -y \
+    build-essential git libvips pkg-config curl gnupg2 libsqlite3-0 && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
-# Copy built artifacts: gems, application
-COPY --from=build /usr/local/bundle /usr/local/bundle
+# Install Node.js
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+FROM base as dependencies
+
+# Copy Gemfile and install gems (this layer is cached if Gemfile doesn't change)
+COPY Gemfile Gemfile.lock ./
+RUN bundle install && \
+    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
+
+# Precompile bootsnap cache
+RUN bundle exec bootsnap precompile --gemfile
+
+# Build stage: Copy the application
+FROM dependencies as build
+
+COPY . .
+
+# Precompile bootsnap code
+RUN bundle exec bootsnap precompile app/ lib/
+
+# Precompile assets (if needed)
+RUN SECRET_KEY_BASE=$SECRET_KEY_BASE_DUMMY ./bin/rails assets:precompile
+
+# Final stage: Minimal runtime image
+FROM base
+
+# Copy built application from previous stages
+COPY --from=dependencies /usr/local/bundle /usr/local/bundle
 COPY --from=build /rails /rails
 
-# Run and own only the runtime files as a non-root user for security
-RUN useradd rails --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+# Ensure the storage directory exists (for SQLite & file uploads)
+RUN mkdir -p /rails/storage && chown -R 1000:1000 /rails/storage
+VOLUME ["/rails/storage"]
+
+# Create a non-root user
+RUN useradd -u 1000 -m rails --create-home --shell /bin/bash && \
+    chown -R rails:rails db log tmp
 USER rails:rails
 
-# Entrypoint prepares the database.
+# Entrypoint script
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Start the server by default, this can be overwritten at runtime
+# Expose port and start the server
 EXPOSE 3000
 CMD ["./bin/rails", "server"]

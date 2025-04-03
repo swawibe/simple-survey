@@ -1,0 +1,31 @@
+stages:
+  - deploy
+
+# This job deploys the Rails app to GitLab Pages
+pages:
+  stage: deploy
+  image: ruby:3.2.0
+  before_script:
+    # Install dependencies for Rails and GitLab Pages
+    - apt-get update -qq && apt-get install -y build-essential libpq-dev nodejs
+    - gem install bundler
+    - bundle install
+  script:
+    - # Use the RAILS_MASTER_KEY for decryption of credentials
+      - export RAILS_MASTER_KEY=$RAILS_MASTER_KEY
+
+    # Run database migration
+    - RAILS_ENV=production bundle exec rake db:create db:migrate
+
+    # Precompile the Rails assets to the public directory
+    - RAILS_ENV=production bundle exec rake assets:precompile
+
+    # Create public directory for GitLab Pages
+#    - mkdir -p public
+#    - cp -r public/* public/
+
+  artifacts:
+    paths:
+      - public
+  only:
+    - main  # Ensure to deploy only from the main branch

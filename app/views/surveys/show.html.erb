@@ -1,0 +1,33 @@
+<div class="container mt-4">
+  <div class="card p-3 mb-4">
+    <h5 class="text-center">Current Responses:</h5>
+    <div class="row text-center">
+      <div class="col-12 col-md-4 mb-2 mb-md-0">
+        <span class="badge bg-success fs-5 w-100 py-2">Yes: <%= @survey.yes_percentage %>%</span>
+      </div>
+      <div class="col-12 col-md-4 mb-2 mb-md-0">
+        <span class="badge bg-danger fs-5 w-100 py-2">No: <%= @survey.no_percentage %>%</span>
+      </div>
+      <div class="col-12 col-md-4">
+        <span class="badge bg-info fs-5 w-100 py-2">Total: <%= @survey.total_responses %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-4">
+    <h2 class="text-center mb-4"><%= @survey.question %></h2>
+
+    <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+      <form action="<%= survey_responses_path(@survey, answer: true, page: params[:page]) %>" method="post">
+        <button type="submit" class="btn btn-lg btn-success px-4 py-2 w-100">Yes</button>
+      </form>
+      <form action="<%= survey_responses_path(@survey, answer: false, page: params[:page]) %>" method="post">
+        <button type="submit" class="btn btn-lg btn-danger px-4 py-2 w-100">No</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <a href="<%= surveys_path(page: params[:page] || 1) %>" class="btn btn-secondary px-4 py-2">Back</a>
+  </div>
+</div>
